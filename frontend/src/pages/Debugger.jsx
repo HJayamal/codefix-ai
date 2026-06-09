@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Editor from "@monaco-editor/react";
 import API from "../api/axios";
-import { Link } from "react-router-dom";
+import Navbar from "../components/Navbar";
 
 function Debugger() {
   const [language, setLanguage] = useState("JavaScript");
@@ -35,6 +35,12 @@ function Debugger() {
     }
   };
 
+  const clearForm = () => {
+    setCode("");
+    setErrorMessage("");
+    setResult(null);
+  };
+
   const copyFixedCode = () => {
     if (result?.fixedCode) {
       navigator.clipboard.writeText(result.fixedCode);
@@ -42,57 +48,57 @@ function Debugger() {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    window.location.href = "/login";
-  };
-
   return (
-    <div style={styles.page}>
-      <div style={styles.container}>
-        {/* Header */}
-        <div style={styles.header}>
-          <div>
-            <h1 style={styles.title}>CodeFix AI Debugger</h1>
-            <p style={styles.subtitle}>
-              Paste your code, add the error message, and let AI explain the bug.
-            </p>
-          </div>
+    <div className="page">
+      <Navbar />
 
-          <div style={styles.navButtons}>
-            <Link to="/history" style={styles.historyLink}>
-              History
-            </Link>
-
-            <button onClick={logout} style={styles.logoutButton}>
-              Logout
-            </button>
-          </div>
+      <div className="container">
+        <div style={styles.headingBlock}>
+          <span className="badge">AI Code Debugger</span>
+          <h1 style={styles.pageTitle}>Analyze, understand, and fix bugs faster</h1>
+          <p style={styles.pageSubtitle}>
+            Paste your code, add the exact error message, and CodeFix AI will
+            generate a beginner-friendly bug report with corrected code.
+          </p>
         </div>
 
-        {/* Main Layout */}
-        <div style={styles.grid}>
-          {/* Left Side */}
-          <div style={styles.card}>
-            <h2 style={styles.cardTitle}>Code Input</h2>
+        <div style={styles.mainGrid}>
+          {/* Left Panel */}
+          <div className="card" style={styles.panel}>
+            <div style={styles.panelHeader}>
+              <div>
+                <h2 style={styles.panelTitle}>Code Input</h2>
+                <p style={styles.panelText}>Select language and paste your code.</p>
+              </div>
 
-            <label style={styles.label}>Programming Language</label>
+              <select
+                className="select"
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                style={styles.languageSelect}
+              >
+                <option>JavaScript</option>
+                <option>Python</option>
+                <option>Java</option>
+                <option>C++</option>
+              </select>
+            </div>
 
-            <select
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              style={styles.select}
-            >
-              <option>JavaScript</option>
-              <option>Python</option>
-              <option>Java</option>
-              <option>C++</option>
-            </select>
+            <div style={styles.editorShell}>
+              <div style={styles.editorTopBar}>
+                <div style={styles.windowDots}>
+                  <span style={{ ...styles.dot, background: "#ef4444" }}></span>
+                  <span style={{ ...styles.dot, background: "#f59e0b" }}></span>
+                  <span style={{ ...styles.dot, background: "#22c55e" }}></span>
+                </div>
 
-            <div style={styles.editorBox}>
+                <span style={styles.fileName}>
+                  {language.toLowerCase()}-bug-example
+                </span>
+              </div>
+
               <Editor
-                height="350px"
+                height="380px"
                 language={language.toLowerCase()}
                 value={code}
                 onChange={(value) => setCode(value || "")}
@@ -102,77 +108,109 @@ function Debugger() {
                   fontSize: 14,
                   wordWrap: "on",
                   automaticLayout: true,
+                  padding: { top: 15 },
                 }}
               />
             </div>
 
             <label style={styles.label}>Error Message</label>
-
             <textarea
+              className="textarea"
               placeholder="Paste error message here..."
               value={errorMessage}
               onChange={(e) => setErrorMessage(e.target.value)}
-              style={styles.textarea}
+              style={styles.errorBox}
             />
 
-            <button
-              onClick={analyzeCode}
-              disabled={loading}
-              style={loading ? styles.disabledButton : styles.analyzeButton}
-            >
-              {loading ? "Analyzing..." : "Analyze Code"}
-            </button>
+            <p style={styles.helperText}>
+              Tip: Adding the exact error message improves AI accuracy.
+            </p>
+
+            <div style={styles.actionRow}>
+              <button
+                onClick={analyzeCode}
+                disabled={loading}
+                className="btn-primary"
+                style={styles.actionButton}
+              >
+                {loading ? "Analyzing..." : "Analyze Code"}
+              </button>
+
+              <button
+                onClick={clearForm}
+                className="btn-secondary"
+                style={styles.clearButton}
+              >
+                Clear
+              </button>
+            </div>
           </div>
 
-          {/* Right Side */}
-          <div style={styles.card}>
-            <h2 style={styles.cardTitle}>AI Bug Report</h2>
+          {/* Right Panel */}
+          <div className="card" style={styles.panel}>
+            <div style={styles.panelHeader}>
+              <div>
+                <h2 style={styles.panelTitle}>AI Bug Report</h2>
+                <p style={styles.panelText}>Your AI-generated result appears here.</p>
+              </div>
+
+              {result && <span className="badge">Saved</span>}
+            </div>
 
             {!result && !loading && (
-              <div style={styles.emptyBox}>
-                <p>No result yet.</p>
-                <p>Enter code and click Analyze Code.</p>
+              <div style={styles.emptyState}>
+                <div style={styles.emptyIcon}>⚡</div>
+                <h3 style={styles.emptyTitle}>No analysis yet</h3>
+                <p style={styles.emptyText}>
+                  Enter your code and click Analyze Code to generate a bug report.
+                </p>
               </div>
             )}
 
             {loading && (
-              <div style={styles.emptyBox}>
-                <p>AI is analyzing your code...</p>
+              <div style={styles.emptyState}>
+                <div style={styles.emptyIcon}>🤖</div>
+                <h3 style={styles.emptyTitle}>AI is analyzing...</h3>
+                <p style={styles.emptyText}>
+                  CodeFix AI is checking your code and preparing the fix.
+                </p>
               </div>
             )}
 
             {result && (
               <div>
-                <div style={styles.resultSection}>
-                  <h3 style={styles.resultTitle}>Bug Type</h3>
-                  <p style={styles.resultText}>{result.bugType}</p>
+                <div style={styles.reportGrid}>
+                  <div style={styles.infoCard}>
+                    <h3 style={styles.infoTitle}>Bug Type</h3>
+                    <p style={styles.infoText}>{result.bugType}</p>
+                  </div>
+
+                  <div style={styles.infoCard}>
+                    <h3 style={styles.infoTitle}>Bug Location</h3>
+                    <p style={styles.infoText}>{result.bugLocation}</p>
+                  </div>
                 </div>
 
-                <div style={styles.resultSection}>
-                  <h3 style={styles.resultTitle}>Bug Location</h3>
-                  <p style={styles.resultText}>{result.bugLocation}</p>
-                </div>
-
-                <div style={styles.resultSection}>
-                  <h3 style={styles.resultTitle}>Explanation</h3>
+                <div style={styles.section}>
+                  <h3 style={styles.sectionTitle}>Explanation</h3>
                   <p style={styles.resultText}>{result.explanation}</p>
                 </div>
 
-                <div style={styles.resultSection}>
-                  <div style={styles.fixedCodeHeader}>
-                    <h3 style={styles.resultTitle}>Fixed Code</h3>
+                <div style={styles.section}>
+                  <div style={styles.codeHeader}>
+                    <h3 style={styles.sectionTitle}>Fixed Code</h3>
                     <button onClick={copyFixedCode} style={styles.copyButton}>
-                      Copy
+                      Copy Code
                     </button>
                   </div>
 
-                  <pre style={styles.codeBlock}>
+                  <pre className="code-block" style={styles.fixedCodeBlock}>
                     <code>{result.fixedCode}</code>
                   </pre>
                 </div>
 
-                <div style={styles.resultSection}>
-                  <h3 style={styles.resultTitle}>Prevention Tip</h3>
+                <div style={styles.tipBox}>
+                  <h3 style={styles.tipTitle}>Prevention Tip</h3>
                   <p style={styles.resultText}>{result.preventionTip}</p>
                 </div>
               </div>
@@ -185,189 +223,223 @@ function Debugger() {
 }
 
 const styles = {
-  page: {
-    minHeight: "100vh",
-    background: "#0f172a",
-    color: "#e5e7eb",
-    padding: "30px",
-    fontFamily: "Arial, sans-serif",
+  headingBlock: {
+    textAlign: "center",
+    maxWidth: "820px",
+    margin: "0 auto 34px auto",
+    paddingTop: "28px",
   },
 
-  container: {
-    maxWidth: "1300px",
-    margin: "0 auto",
+  pageTitle: {
+    fontSize: "44px",
+    lineHeight: "1.1",
+    color: "#ffffff",
+    margin: "18px 0 14px",
   },
 
-  header: {
+  pageSubtitle: {
+    color: "#cbd5e1",
+    fontSize: "17px",
+    lineHeight: "1.7",
+  },
+
+  mainGrid: {
+    display: "grid",
+    gridTemplateColumns: "1.05fr 0.95fr",
+    gap: "24px",
+    alignItems: "start",
+  },
+
+  panel: {
+    padding: "24px",
+  },
+
+  panelHeader: {
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "30px",
-    gap: "20px",
+    alignItems: "flex-start",
+    gap: "16px",
+    marginBottom: "20px",
   },
 
-  title: {
-    fontSize: "34px",
-    margin: "0",
+  panelTitle: {
     color: "#ffffff",
+    margin: "0 0 6px 0",
   },
 
-  subtitle: {
+  panelText: {
     color: "#94a3b8",
-    marginTop: "8px",
+    margin: 0,
   },
 
-  navButtons: {
+  languageSelect: {
+    maxWidth: "190px",
+  },
+
+  editorShell: {
+    border: "1px solid #334155",
+    borderRadius: "14px",
+    overflow: "hidden",
+    background: "#020617",
+    marginBottom: "18px",
+  },
+
+  editorTopBar: {
+    height: "42px",
+    background: "#020617",
+    borderBottom: "1px solid #1e293b",
     display: "flex",
     alignItems: "center",
-    gap: "12px",
+    justifyContent: "space-between",
+    padding: "0 14px",
   },
 
-  historyLink: {
-    textDecoration: "none",
-    color: "#ffffff",
-    background: "#2563eb",
-    padding: "10px 16px",
-    borderRadius: "8px",
-    fontWeight: "bold",
+  windowDots: {
+    display: "flex",
+    gap: "7px",
   },
 
-  logoutButton: {
-    background: "#dc2626",
-    color: "#ffffff",
-    border: "none",
-    padding: "10px 16px",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontWeight: "bold",
+  dot: {
+    width: "10px",
+    height: "10px",
+    borderRadius: "50%",
+    display: "inline-block",
   },
 
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: "25px",
-  },
-
-  card: {
-    background: "#111827",
-    border: "1px solid #334155",
-    borderRadius: "12px",
-    padding: "22px",
-    boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
-  },
-
-  cardTitle: {
-    marginTop: "0",
-    marginBottom: "20px",
-    color: "#ffffff",
+  fileName: {
+    color: "#94a3b8",
+    fontSize: "13px",
   },
 
   label: {
     display: "block",
-    marginBottom: "8px",
     color: "#cbd5e1",
+    marginBottom: "8px",
     fontWeight: "bold",
   },
 
-  select: {
-    width: "100%",
-    padding: "10px",
-    marginBottom: "18px",
-    borderRadius: "8px",
-    border: "1px solid #475569",
-    background: "#020617",
-    color: "#ffffff",
+  errorBox: {
+    height: "110px",
   },
 
-  editorBox: {
-    border: "1px solid #334155",
-    borderRadius: "8px",
-    overflow: "hidden",
-    marginBottom: "18px",
+  helperText: {
+    color: "#94a3b8",
+    fontSize: "14px",
+    marginTop: "10px",
   },
 
-  textarea: {
-    width: "100%",
-    height: "100px",
-    padding: "12px",
-    borderRadius: "8px",
-    border: "1px solid #475569",
-    background: "#020617",
-    color: "#ffffff",
-    resize: "vertical",
-    marginBottom: "18px",
-    boxSizing: "border-box",
+  actionRow: {
+    display: "flex",
+    gap: "12px",
+    marginTop: "18px",
   },
 
-  analyzeButton: {
-    width: "100%",
-    background: "#22c55e",
-    color: "#052e16",
-    border: "none",
-    padding: "13px",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontWeight: "bold",
-    fontSize: "15px",
+  actionButton: {
+    flex: 1,
   },
 
-  disabledButton: {
-    width: "100%",
-    background: "#64748b",
-    color: "#ffffff",
-    border: "none",
-    padding: "13px",
-    borderRadius: "8px",
-    cursor: "not-allowed",
-    fontWeight: "bold",
-    fontSize: "15px",
+  clearButton: {
+    width: "120px",
   },
 
-  emptyBox: {
-    border: "1px dashed #475569",
-    borderRadius: "10px",
-    padding: "40px",
+  emptyState: {
+    minHeight: "520px",
+    border: "1px dashed #334155",
+    borderRadius: "16px",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
     textAlign: "center",
     color: "#94a3b8",
+    padding: "30px",
   },
 
-  resultSection: {
+  emptyIcon: {
+    fontSize: "44px",
+    marginBottom: "16px",
+  },
+
+  emptyTitle: {
+    color: "#ffffff",
+    marginBottom: "8px",
+  },
+
+  emptyText: {
+    maxWidth: "360px",
+    lineHeight: "1.6",
+  },
+
+  reportGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: "14px",
+    marginBottom: "20px",
+  },
+
+  infoCard: {
+    background: "#020617",
+    border: "1px solid #334155",
+    borderRadius: "12px",
+    padding: "18px",
+  },
+
+  infoTitle: {
+    color: "#38bdf8",
+    marginTop: 0,
+    marginBottom: "8px",
+  },
+
+  infoText: {
+    color: "#dbeafe",
+    lineHeight: "1.5",
+  },
+
+  section: {
     marginBottom: "22px",
   },
 
-  resultTitle: {
-    marginBottom: "8px",
+  sectionTitle: {
     color: "#38bdf8",
+    marginBottom: "10px",
   },
 
   resultText: {
     color: "#dbeafe",
-    lineHeight: "1.6",
+    lineHeight: "1.7",
   },
 
-  fixedCodeHeader: {
+  codeHeader: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
   },
 
   copyButton: {
-    background: "#334155",
+    background: "#1e293b",
     color: "#ffffff",
-    border: "1px solid #475569",
-    padding: "6px 12px",
-    borderRadius: "6px",
+    border: "1px solid #334155",
+    borderRadius: "8px",
+    padding: "8px 12px",
     cursor: "pointer",
+    fontWeight: "bold",
   },
 
-  codeBlock: {
-    background: "#020617",
+  fixedCodeBlock: {
+    marginTop: "10px",
+    minHeight: "180px",
+  },
+
+  tipBox: {
+    background: "rgba(34, 197, 94, 0.08)",
+    border: "1px solid rgba(34, 197, 94, 0.25)",
+    borderRadius: "12px",
+    padding: "18px",
+  },
+
+  tipTitle: {
     color: "#22c55e",
-    padding: "16px",
-    borderRadius: "8px",
-    overflowX: "auto",
-    whiteSpace: "pre-wrap",
-    lineHeight: "1.5",
+    marginTop: 0,
   },
 };
 
