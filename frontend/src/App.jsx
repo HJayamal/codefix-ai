@@ -10,20 +10,64 @@ import Dashboard from "./pages/Dashboard";
 import ReportDetail from "./pages/ReportDetail";
 import Settings from "./pages/Settings";
 
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Public pages */}
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/debugger" element={<Debugger />} />
-        <Route path="/history" element={<History />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/history/:id" element={<ReportDetail />} />
-        <Route path="/settings" element={<Settings />} />
 
+        {/* Protected pages */}
+        <Route
+          path="/debugger"
+          element={
+            <ProtectedRoute>
+              <Debugger />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/history"
+          element={
+            <ProtectedRoute>
+              <History />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/history/:id"
+          element={
+            <ProtectedRoute>
+              <ReportDetail />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <Settings />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* 404 page */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
