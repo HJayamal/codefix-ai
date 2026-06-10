@@ -5,6 +5,11 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Debugger from "./pages/Debugger";
 import History from "./pages/History";
+import NotFound from "./pages/NotFound";
+import Dashboard from "./pages/Dashboard";
+import ReportDetail from "./pages/ReportDetail";
+import Settings from "./pages/Settings";
+
 
 function App() {
   return (
@@ -15,6 +20,11 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/debugger" element={<Debugger />} />
         <Route path="/history" element={<History />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/history/:id" element={<ReportDetail />} />
+        <Route path="/settings" element={<Settings />} />
+
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   );
