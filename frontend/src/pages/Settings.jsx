@@ -1,17 +1,13 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import API from "../api/axios";
 
 function Settings() {
   const navigate = useNavigate();
 
-  const savedUser = JSON.parse(localStorage.getItem("user")) || {
-    name: "Alex Rivera",
-    email: "alex.rivera@engineers.io",
-  };
-
   const [profile, setProfile] = useState({
-    name: savedUser.name || "Alex Rivera",
-    email: savedUser.email || "alex.rivera@engineers.io",
+    name: "",
+    email: "",
   });
 
   const [security, setSecurity] = useState({
@@ -20,9 +16,39 @@ function Settings() {
     confirmPassword: "",
   });
 
-  const [primaryLanguage, setPrimaryLanguage] = useState("TypeScript");
+  const [primaryLanguage, setPrimaryLanguage] = useState("JavaScript");
   const [autoFix, setAutoFix] = useState(true);
   const [theme, setTheme] = useState("Dark");
+  const [loading, setLoading] = useState(true);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+
+  const getProfile = async () => {
+    try {
+      const res = await API.get("/users/profile");
+
+      setProfile({
+        name: res.data.name,
+        email: res.data.email,
+      });
+
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          name: res.data.name,
+          email: res.data.email,
+        })
+      );
+    } catch (error) {
+      alert(error.response?.data?.message || "Failed to load profile");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    getProfile();
+  }, []);
 
   const logout = () => {
     localStorage.removeItem("token");
@@ -30,13 +56,36 @@ function Settings() {
     navigate("/login");
   };
 
-  const saveProfile = () => {
-    localStorage.setItem("user", JSON.stringify(profile));
-    alert("Profile updated successfully!");
+  const saveProfile = async () => {
+    if (!profile.name.trim() || !profile.email.trim()) {
+      alert("Name and email are required");
+      return;
+    }
+
+    try {
+      setSavingProfile(true);
+
+      const res = await API.put("/users/profile", {
+        name: profile.name,
+        email: profile.email,
+      });
+
+      localStorage.setItem("user", JSON.stringify(res.data.user));
+
+      alert("Profile updated successfully!");
+    } catch (error) {
+      alert(error.response?.data?.message || "Failed to update profile");
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
-  const updateSecurity = () => {
-    if (!security.currentPassword || !security.newPassword || !security.confirmPassword) {
+  const updateSecurity = async () => {
+    if (
+      !security.currentPassword ||
+      !security.newPassword ||
+      !security.confirmPassword
+    ) {
       alert("Please fill all password fields");
       return;
     }
@@ -46,13 +95,81 @@ function Settings() {
       return;
     }
 
-    alert("Security updated successfully!");
-    setSecurity({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    });
+    if (security.newPassword.length < 6) {
+      alert("New password must be at least 6 characters");
+      return;
+    }
+
+    try {
+      setUpdatingPassword(true);
+
+      await API.put("/users/password", {
+        currentPassword: security.currentPassword,
+        newPassword: security.newPassword,
+      });
+
+      alert("Password updated successfully!");
+
+      setSecurity({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    } catch (error) {
+      alert(error.response?.data?.message || "Failed to update password");
+    } finally {
+      setUpdatingPassword(false);
+    }
   };
+
+  const getInitials = (name) => {
+    if (!name) return "U";
+
+    return name
+      .split(" ")
+      .map((word) => word[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase();
+  };
+
+  if (loading) {
+    return (
+      <div className="settings-loading">
+        <div className="loader"></div>
+        <p>Loading settings...</p>
+
+        <style>{`
+          .settings-loading {
+            min-height: 100vh;
+            background: #0b101a;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: Inter, Arial, sans-serif;
+          }
+
+          .loader {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(148, 163, 184, 0.25);
+            border-top-color: #67e8f9;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 18px;
+          }
+
+          @keyframes spin {
+            to {
+              transform: rotate(360deg);
+            }
+          }
+        `}</style>
+      </div>
+    );
+  }
 
   return (
     <div className="settings-page">
@@ -104,10 +221,15 @@ function Settings() {
               <div className="avatar-section">
                 <div className="profile-avatar">
                   <div className="face-glow"></div>
-                  <span>AR</span>
+                  <span>{getInitials(profile.name)}</span>
                 </div>
 
-                <button className="edit-avatar">✎</button>
+                <button
+                  className="edit-avatar"
+                  onClick={() => alert("Profile image upload coming soon")}
+                >
+                  ✎
+                </button>
               </div>
 
               <div className="profile-form">
@@ -129,8 +251,12 @@ function Settings() {
                   }
                 />
 
-                <button className="save-btn" onClick={saveProfile}>
-                  Save Changes
+                <button
+                  className="save-btn"
+                  onClick={saveProfile}
+                  disabled={savingProfile}
+                >
+                  {savingProfile ? "Saving..." : "Save Changes"}
                 </button>
               </div>
             </div>
@@ -186,8 +312,12 @@ function Settings() {
                 </div>
               </div>
 
-              <button className="security-btn" onClick={updateSecurity}>
-                Update Security
+              <button
+                className="security-btn"
+                onClick={updateSecurity}
+                disabled={updatingPassword}
+              >
+                {updatingPassword ? "Updating..." : "Update Security"}
               </button>
             </div>
           </div>
@@ -214,7 +344,12 @@ function Settings() {
                 <div className="progress-fill projects"></div>
               </div>
 
-              <button className="upgrade-btn">Upgrade Plan</button>
+              <button
+                className="upgrade-btn"
+                onClick={() => alert("Upgrade plan coming soon")}
+              >
+                Upgrade Plan
+              </button>
             </div>
 
             <div className="preferences-card card">
@@ -228,8 +363,8 @@ function Settings() {
                 value={primaryLanguage}
                 onChange={(e) => setPrimaryLanguage(e.target.value)}
               >
-                <option>TypeScript</option>
                 <option>JavaScript</option>
+                <option>TypeScript</option>
                 <option>Python</option>
                 <option>Java</option>
                 <option>C++</option>
@@ -239,7 +374,9 @@ function Settings() {
 
               <div className="theme-grid">
                 <button
-                  className={theme === "Dark" ? "theme-card selected" : "theme-card"}
+                  className={
+                    theme === "Dark" ? "theme-card selected" : "theme-card"
+                  }
                   onClick={() => setTheme("Dark")}
                 >
                   <span>☾</span>
@@ -247,7 +384,9 @@ function Settings() {
                 </button>
 
                 <button
-                  className={theme === "System" ? "theme-card selected" : "theme-card"}
+                  className={
+                    theme === "System" ? "theme-card selected" : "theme-card"
+                  }
                   onClick={() => setTheme("System")}
                 >
                   <span>▣</span>
@@ -272,7 +411,10 @@ function Settings() {
         <section className="danger-zone">
           <div>
             <h2>⚠ Danger Zone</h2>
-            <p>Once you delete your account, there is no going back. Please be certain.</p>
+            <p>
+              Once you delete your account, there is no going back. Please be
+              certain.
+            </p>
           </div>
 
           <button onClick={() => alert("Account delete feature not connected yet")}>
@@ -582,6 +724,13 @@ function Settings() {
         .upgrade-btn:hover {
           transform: translateY(-3px);
           box-shadow: 0 18px 42px rgba(167, 191, 255, 0.24);
+        }
+
+        .save-btn:disabled,
+        .security-btn:disabled {
+          opacity: 0.65;
+          cursor: not-allowed;
+          transform: none;
         }
 
         .security-card {

@@ -206,7 +206,9 @@ function History() {
                     <span>☼ 98% Conf.</span>
                   </div>
 
-                  <button className="details-btn">View Details</button>
+                  <Link to={`/history/${item._id}`} className="details-btn">
+  View Details
+</Link>
                 </div>
               </article>
             ))}
@@ -651,17 +653,21 @@ function History() {
         }
 
         .details-btn {
-          height: 36px;
-          min-width: 130px;
-          border: none;
-          border-radius: 8px;
-          background: #252f44;
-          color: #dbeafe;
-          font-weight: 950;
-          letter-spacing: 1px;
-          cursor: pointer;
-          transition: 0.25s ease;
-        }
+  height: 36px;
+  min-width: 130px;
+  border: none;
+  border-radius: 8px;
+  background: #252f44;
+  color: #dbeafe;
+  font-weight: 950;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: 0.25s ease;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
         .details-btn:hover {
           background: #334155;
