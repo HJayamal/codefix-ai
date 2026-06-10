@@ -1,12 +1,32 @@
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import API from "../api/axios";
 
 function Dashboard() {
   const navigate = useNavigate();
+
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const user = JSON.parse(localStorage.getItem("user")) || {
     name: "John Doe",
     email: "john@codefix.ai",
   };
+
+  const getStats = async () => {
+    try {
+      const res = await API.get("/debug/dashboard/stats");
+      setStats(res.data);
+    } catch (error) {
+      alert(error.response?.data?.message || "Failed to load dashboard stats");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    getStats();
+  }, []);
 
   const logout = () => {
     localStorage.removeItem("token");
@@ -22,6 +42,31 @@ function Dashboard() {
       .slice(0, 2)
       .toUpperCase();
   };
+
+  const formatLastAnalysis = (date) => {
+    if (!date) return "No data";
+
+    const diffMs = new Date() - new Date(date);
+    const diffMinutes = Math.floor(diffMs / 60000);
+
+    if (diffMinutes < 1) return "Just now";
+    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+  };
+
+  const languageStats = stats?.languageStats || [];
+  const bugTypeStats = stats?.bugTypeStats || [];
+  const recentReports = stats?.recentReports || [];
+
+  const maxLanguageCount =
+    languageStats.length > 0
+      ? Math.max(...languageStats.map((item) => item.count))
+      : 1;
 
   return (
     <div className="dashboard-page">
@@ -47,6 +92,11 @@ function Dashboard() {
               <span>▦</span>
               Dashboard
             </Link>
+
+            <Link to="/settings" className="nav-item">
+              <span>⚙</span>
+              Settings
+            </Link>
           </nav>
         </div>
 
@@ -63,7 +113,7 @@ function Dashboard() {
             <span className="divider-line"></span>
             <p>
               <span>▣</span>
-              Oct 24, 2023 - Today
+              Today
             </p>
           </div>
 
@@ -73,150 +123,204 @@ function Dashboard() {
           </div>
         </header>
 
-        <section className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-head">
-              <p>Total Bugs Fixed</p>
-              <span className="success-icon">✓</span>
-            </div>
-            <h2>
-              1,284 <span>+12%</span>
-            </h2>
+        {loading && (
+          <div className="loading-state">
+            <div className="loader"></div>
+            <p>Loading dashboard stats...</p>
           </div>
+        )}
 
-          <div className="stat-card">
-            <div className="stat-head">
-              <p>Top Language</p>
-              <span className="blue-icon">‹›</span>
-            </div>
-            <h2>
-              TypeScript <span>42%</span>
-            </h2>
-          </div>
+        {!loading && stats && (
+          <>
+            <section className="stats-grid">
+              <div className="stat-card">
+                <div className="stat-head">
+                  <p>Total Bugs Fixed</p>
+                  <span className="success-icon">✓</span>
+                </div>
 
-          <div className="stat-card">
-            <div className="stat-head">
-              <p>Critical Issue</p>
-              <span className="danger-icon">△</span>
-            </div>
-            <h2 className="critical-title">
-              Null <br /> Pointer
-              <span>89 Found</span>
-            </h2>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-head">
-              <p>Last Analysis</p>
-              <span className="purple-icon">↺</span>
-            </div>
-            <h2>
-              2m ago <span className="live-dot">● Live</span>
-            </h2>
-          </div>
-        </section>
-
-        <section className="analytics-grid">
-          <div className="chart-card language-card">
-            <div className="card-header">
-              <h2>Language Usage Analysis</h2>
-
-              <div className="toggle-row">
-                <button className="active">Weekly</button>
-                <button>Monthly</button>
+                <h2>
+                  {stats.totalReports}
+                  <span> Reports</span>
+                </h2>
               </div>
-            </div>
 
-            <div className="bar-chart">
-              {languageUsage.map((item, index) => (
-                <div className="bar-item" key={item.name}>
-                  <div className="bar-track">
-                    <div
-                      className="bar-fill"
-                      style={{
-                        height: `${item.value}%`,
-                        animationDelay: `${index * 0.12}s`,
-                      }}
-                    ></div>
+              <div className="stat-card">
+                <div className="stat-head">
+                  <p>Top Language</p>
+                  <span className="blue-icon">‹›</span>
+                </div>
+
+                <h2>
+                  {stats.topLanguage || "N/A"}
+                  <span>
+                    {languageStats[0]
+                      ? `${languageStats[0].count} fixes`
+                      : "0 fixes"}
+                  </span>
+                </h2>
+              </div>
+
+              <div className="stat-card">
+                <div className="stat-head">
+                  <p>Critical Issue</p>
+                  <span className="danger-icon">△</span>
+                </div>
+
+                <h2 className="critical-title">
+                  {stats.criticalIssue || "N/A"}
+                  <span>
+                    {bugTypeStats[0]
+                      ? `${bugTypeStats[0].count} Found`
+                      : "0 Found"}
+                  </span>
+                </h2>
+              </div>
+
+              <div className="stat-card">
+                <div className="stat-head">
+                  <p>Last Analysis</p>
+                  <span className="purple-icon">↺</span>
+                </div>
+
+                <h2>
+                  {formatLastAnalysis(stats.lastAnalysis)}
+                  <span className="live-dot">● Live</span>
+                </h2>
+              </div>
+            </section>
+
+            <section className="analytics-grid">
+              <div className="chart-card language-card">
+                <div className="card-header">
+                  <h2>Language Usage Analysis</h2>
+
+                  <div className="toggle-row">
+                    <button className="active">Weekly</button>
+                    <button>Monthly</button>
                   </div>
-                  <p>{item.name}</p>
                 </div>
-              ))}
-            </div>
-          </div>
 
-          <div className="chart-card bug-card">
-            <h2>Bug Types</h2>
+                <div className="bar-chart">
+                  {languageStats.length === 0 && (
+                    <p className="no-data">No language data yet</p>
+                  )}
 
-            <div className="donut-wrap">
-              <div className="donut-chart">
-                <div className="donut-center">
-                  <h3>4.2k</h3>
-                  <p>Total Points</p>
+                  {languageStats.slice(0, 5).map((item, index) => (
+                    <div className="bar-item" key={item._id || index}>
+                      <div className="bar-track">
+                        <div
+                          className="bar-fill"
+                          style={{
+                            height: `${Math.max(
+                              18,
+                              (item.count / maxLanguageCount) * 100
+                            )}%`,
+                            animationDelay: `${index * 0.12}s`,
+                          }}
+                        ></div>
+                      </div>
+
+                      <p>{item._id || "N/A"}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
-            </div>
 
-            <div className="bug-list">
-              <div>
-                <span className="dot dot-blue"></span>
-                Syntax Errors
-                <strong>58%</strong>
+              <div className="chart-card bug-card">
+                <h2>Bug Types</h2>
+
+                <div className="donut-wrap">
+                  <div className="donut-chart">
+                    <div className="donut-center">
+                      <h3>{stats.totalReports}</h3>
+                      <p>Total Reports</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bug-list">
+                  {bugTypeStats.length === 0 && (
+                    <p className="no-data">No bug type data yet</p>
+                  )}
+
+                  {bugTypeStats.slice(0, 3).map((item, index) => (
+                    <div key={item._id || index}>
+                      <span
+                        className={
+                          index === 0
+                            ? "dot dot-blue"
+                            : index === 1
+                            ? "dot dot-cyan"
+                            : "dot dot-gray"
+                        }
+                      ></span>
+                      {item._id || "Unknown Issue"}
+                      <strong>{item.count}</strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            <section className="activity-card">
+              <div className="activity-header">
+                <h2>Recent Analysis Activity</h2>
+                <Link to="/history">View All</Link>
               </div>
 
-              <div>
-                <span className="dot dot-cyan"></span>
-                Logic Flaws
-                <strong>32%</strong>
+              <div className="activity-table">
+                <div className="table-row table-head">
+                  <span>Language</span>
+                  <span>Bug Type</span>
+                  <span>Bug Location</span>
+                  <span>Status</span>
+                  <span>Timestamp</span>
+                </div>
+
+                {recentReports.length === 0 && (
+                  <div className="empty-row">
+                    No recent analysis found. Analyze code first.
+                  </div>
+                )}
+
+                {recentReports.map((item, index) => (
+                  <div
+                    className="table-row"
+                    key={item._id}
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                  >
+                    <span className="repo-name">{item.language}</span>
+                    <span>🪄 {item.bugType || "Code Analysis"}</span>
+                    <span className="issue-critical">
+                      {item.bugLocation || "Not specified"}
+                    </span>
+                    <span>
+                      <strong className="status-pill status-success">
+                        FIXED
+                      </strong>
+                    </span>
+                    <span>
+                      {new Date(item.createdAt).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
+                ))}
               </div>
+            </section>
 
-              <div>
-                <span className="dot dot-gray"></span>
-                Security Risks
-                <strong>10%</strong>
-              </div>
-            </div>
-          </div>
-        </section>
+            <button
+              className="floating-add"
+              onClick={() => navigate("/debugger")}
+            >
+              ＋
+            </button>
 
-        <section className="activity-card">
-          <div className="activity-header">
-            <h2>Recent Analysis Activity</h2>
-            <button>View All</button>
-          </div>
-
-          <div className="activity-table">
-            <div className="table-row table-head">
-              <span>Repository</span>
-              <span>Action</span>
-              <span>Issues Found</span>
-              <span>Status</span>
-              <span>Timestamp</span>
-            </div>
-
-            {activities.map((item, index) => (
-              <div
-                className="table-row"
-                key={item.repository}
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                <span className="repo-name">{item.repository}</span>
-                <span>{item.icon} {item.action}</span>
-                <span className={item.issueClass}>{item.issues}</span>
-                <span>
-                  <strong className={`status-pill ${item.statusClass}`}>
-                    {item.status}
-                  </strong>
-                </span>
-                <span>{item.time}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <button className="floating-add">＋</button>
-
-        <footer className="dashboard-footer"></footer>
+            <footer className="dashboard-footer"></footer>
+          </>
+        )}
       </main>
 
       <style>{`
@@ -417,6 +521,25 @@ function Dashboard() {
           box-shadow: 0 0 30px rgba(103, 232, 249, 0.12);
         }
 
+        .loading-state {
+          min-height: calc(100vh - 60px);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          color: #cbd5e1;
+        }
+
+        .loader {
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          border: 4px solid rgba(148, 163, 184, 0.24);
+          border-top-color: #67e8f9;
+          animation: spin 0.85s linear infinite;
+          margin-bottom: 18px;
+        }
+
         .stats-grid {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
@@ -496,7 +619,7 @@ function Dashboard() {
 
         .stat-card h2 {
           margin: 0;
-          font-size: 52px;
+          font-size: 48px;
           line-height: 1;
           letter-spacing: -2px;
         }
@@ -509,8 +632,8 @@ function Dashboard() {
         }
 
         .critical-title {
-          font-size: 31px !important;
-          line-height: 1.1 !important;
+          font-size: 28px !important;
+          line-height: 1.15 !important;
           display: flex;
           align-items: center;
           gap: 20px;
@@ -520,6 +643,7 @@ function Dashboard() {
           color: #dbeafe !important;
           font-size: 15px !important;
           line-height: 1.2;
+          min-width: 70px;
         }
 
         .live-dot {
@@ -583,6 +707,7 @@ function Dashboard() {
           gap: 36px;
           align-items: end;
           padding: 0 40px;
+          position: relative;
         }
 
         .bar-item {
@@ -618,6 +743,7 @@ function Dashboard() {
           color: #d1d5db;
           font-family: Consolas, monospace;
           font-size: 12px;
+          text-align: center;
         }
 
         .bug-card {
@@ -713,6 +839,11 @@ function Dashboard() {
           font-size: 14px;
         }
 
+        .no-data {
+          color: #94a3b8;
+          font-family: Consolas, monospace;
+        }
+
         .activity-card {
           padding: 28px;
           min-height: 330px;
@@ -726,13 +857,16 @@ function Dashboard() {
           margin-bottom: 30px;
         }
 
-        .activity-header button {
-          border: none;
-          background: transparent;
+        .activity-header a {
           color: #dbeafe;
+          text-decoration: none;
           font-family: Consolas, monospace;
           font-size: 14px;
-          cursor: pointer;
+          transition: 0.25s ease;
+        }
+
+        .activity-header a:hover {
+          color: #67e8f9;
         }
 
         .activity-table {
@@ -741,7 +875,7 @@ function Dashboard() {
 
         .table-row {
           display: grid;
-          grid-template-columns: 1.3fr 1.5fr 0.8fr 0.9fr 0.6fr;
+          grid-template-columns: 1fr 1.4fr 1.2fr 0.8fr 0.7fr;
           gap: 18px;
           align-items: center;
           min-height: 62px;
@@ -773,16 +907,6 @@ function Dashboard() {
           font-family: Consolas, monospace;
         }
 
-        .issue-good {
-          color: #67e8f9;
-          font-family: Consolas, monospace;
-        }
-
-        .issue-warning {
-          color: #d1d5db;
-          font-family: Consolas, monospace;
-        }
-
         .status-pill {
           display: inline-block;
           padding: 5px 12px;
@@ -792,19 +916,15 @@ function Dashboard() {
           font-weight: 900;
         }
 
-        .status-danger {
-          background: #991b1b;
-          color: #fecaca;
-        }
-
         .status-success {
           background: #334155;
           color: #bfdbfe;
         }
 
-        .status-progress {
-          background: #323846;
-          color: #d1d5db;
+        .empty-row {
+          color: #94a3b8;
+          padding: 28px 0;
+          font-family: Consolas, monospace;
         }
 
         .floating-add {
@@ -879,6 +999,12 @@ function Dashboard() {
           to {
             opacity: 1;
             transform: translateY(0);
+          }
+        }
+
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
           }
         }
 
@@ -959,46 +1085,5 @@ function Dashboard() {
     </div>
   );
 }
-
-const languageUsage = [
-  { name: "TS", value: 88 },
-  { name: "Py", value: 66 },
-  { name: "Go", value: 45 },
-  { name: "Rust", value: 55 },
-  { name: "Other", value: 35 },
-];
-
-const activities = [
-  {
-    repository: "auth-microservice",
-    icon: "🪄",
-    action: "Refactoring Suggestion",
-    issues: "12 Critical",
-    issueClass: "issue-critical",
-    status: "ACTION REQUIRED",
-    statusClass: "status-danger",
-    time: "10:42 AM",
-  },
-  {
-    repository: "frontend-dashboard",
-    icon: "⌕",
-    action: "Security Scan",
-    issues: "0 Issues",
-    issueClass: "issue-good",
-    status: "OPTIMIZED",
-    statusClass: "status-success",
-    time: "09:15 AM",
-  },
-  {
-    repository: "payment-gateway-sdk",
-    icon: "⚙",
-    action: "Deep Trace Analysis",
-    issues: "4 Warnings",
-    issueClass: "issue-warning",
-    status: "IN PROGRESS",
-    statusClass: "status-progress",
-    time: "Yesterday",
-  },
-];
 
 export default Dashboard;

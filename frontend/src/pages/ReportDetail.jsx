@@ -1,7 +1,13 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import API from "../api/axios";
 
 function ReportDetail() {
   const navigate = useNavigate();
+  const { id } = useParams();
+
+  const [report, setReport] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const logout = () => {
     localStorage.removeItem("token");
@@ -9,10 +15,67 @@ function ReportDetail() {
     navigate("/login");
   };
 
+  const getReport = async () => {
+    try {
+      const res = await API.get(`/debug/history/${id}`);
+      setReport(res.data);
+    } catch (error) {
+      alert(error.response?.data?.message || "Failed to load report");
+      navigate("/history");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    getReport();
+  }, [id]);
+
   const copyFixedCode = async () => {
-    await navigator.clipboard.writeText(fixedCode);
+    if (!report?.fixedCode) return;
+    await navigator.clipboard.writeText(report.fixedCode);
     alert("Fixed code copied!");
   };
+
+  if (loading) {
+    return (
+      <div className="report-loading">
+        <div className="loader"></div>
+        <p>Loading report...</p>
+
+        <style>{`
+          .report-loading {
+            min-height: 100vh;
+            background: #0b101a;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: Inter, Arial, sans-serif;
+          }
+
+          .loader {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(148, 163, 184, 0.25);
+            border-top-color: #67e8f9;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 18px;
+          }
+
+          @keyframes spin {
+            to {
+              transform: rotate(360deg);
+            }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  if (!report) return null;
 
   return (
     <div className="report-page">
@@ -41,6 +104,11 @@ function ReportDetail() {
               <span>▦</span>
               DASHBOARD
             </Link>
+
+            <Link to="/settings" className="nav-item">
+              <span>⚙</span>
+              SETTINGS
+            </Link>
           </nav>
         </div>
 
@@ -58,12 +126,12 @@ function ReportDetail() {
             </Link>
             <span className="divider"></span>
             <h1>
-              Report Detail: <span>#FIX-8842</span>
+              Report Detail: <span>#{report._id.slice(-6).toUpperCase()}</span>
             </h1>
           </div>
 
           <div className="topbar-actions">
-            <span className="critical-badge">● CRITICAL BUG</span>
+            <span className="critical-badge">● AI BUG REPORT</span>
             <button onClick={copyFixedCode} className="copy-btn">
               ▣ Copy Fixed Code
             </button>
@@ -75,7 +143,7 @@ function ReportDetail() {
             <div className="summary-icon">‹›</div>
             <div>
               <p>LANGUAGE</p>
-              <h2>TypeScript</h2>
+              <h2>{report.language}</h2>
             </div>
           </div>
 
@@ -83,7 +151,7 @@ function ReportDetail() {
             <div className="summary-icon danger">▣</div>
             <div>
               <p>BUG TYPE</p>
-              <h2>Memory Leak</h2>
+              <h2>{report.bugType || "Code Issue"}</h2>
             </div>
           </div>
 
@@ -91,7 +159,7 @@ function ReportDetail() {
             <div className="summary-icon cyan">⌖</div>
             <div>
               <p>BUG LOCATION</p>
-              <h2>src/hooks/useData.ts:42</h2>
+              <h2>{report.bugLocation || "Not specified"}</h2>
             </div>
           </div>
         </section>
@@ -101,21 +169,13 @@ function ReportDetail() {
 
           <h2>AI Explanation</h2>
 
-          <p>
-            The detected issue originates from an uncleaned effect in your custom
-            hook. Specifically, the <code>setInterval</code> initiated within
-            the <code>useEffect</code> block is not being cleared upon component
-            unmount. This leads to cumulative memory consumption and unexpected
-            background executions as the user navigates through different views
-            of the application.
-          </p>
+          <p>{report.explanation}</p>
 
           <div className="quote-box">
             <span>♙</span>
             <em>
-              “Cleaning up intervals is critical in React&apos;s lifecycle to
-              prevent side-effects from persisting across re-renders or
-              unmounts.”
+              “Review the root cause, understand the fix, and apply the same
+              prevention method in similar code.”
             </em>
           </div>
         </section>
@@ -124,10 +184,10 @@ function ReportDetail() {
           <div className="code-section">
             <div className="code-title">
               <h3>↺ ORIGINAL SOURCE</h3>
-              <span className="vulnerable">VULNERABLE</span>
+              <span className="vulnerable">ORIGINAL</span>
             </div>
 
-            <pre className="code-box original">{originalCode}</pre>
+            <pre className="code-box original">{report.originalCode}</pre>
           </div>
 
           <div className="code-section">
@@ -136,7 +196,7 @@ function ReportDetail() {
               <span className="optimized">OPTIMIZED</span>
             </div>
 
-            <pre className="code-box fixed">{fixedCode}</pre>
+            <pre className="code-box fixed">{report.fixedCode}</pre>
           </div>
         </section>
 
@@ -146,13 +206,7 @@ function ReportDetail() {
             <h2>Prevention Tip</h2>
           </div>
 
-          <p>
-            Always pair <code>setInterval</code>, <code>setTimeout</code>, or any
-            external subscriptions like WebSockets with a return cleanup function
-            in your <code>useEffect</code>. Consider using a linter rule like{" "}
-            <code>exhaustive-deps</code> to ensure all dependencies and
-            side-effects are correctly tracked and disposed.
-          </p>
+          <p>{report.preventionTip || "Test the corrected code and avoid repeating the same mistake."}</p>
         </section>
 
         <footer className="bottom-line"></footer>
@@ -477,14 +531,6 @@ function ReportDetail() {
           margin: 0;
         }
 
-        code {
-          color: #67e8f9;
-          background: rgba(34, 211, 238, 0.12);
-          padding: 2px 7px;
-          border-radius: 5px;
-          font-family: Consolas, monospace;
-        }
-
         .quote-box {
           margin-top: 28px;
           border: 1px solid rgba(147, 197, 253, 0.25);
@@ -735,24 +781,5 @@ function ReportDetail() {
     </div>
   );
 }
-
-const originalCode = `useEffect(() => {
-  const timer = setInterval(() => {
-    fetchData();
-  }, 5000);
-
-  // Missing return cleanup function
-}, []);`;
-
-const fixedCode = `useEffect(() => {
-  const timer = setInterval(() => {
-    fetchData();
-  }, 5000);
-
-  return () => {
-    clearInterval(timer);
-    // Cleanup successful
-  };
-}, []);`;
 
 export default ReportDetail;

@@ -5,6 +5,81 @@ const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
 });
 
+exports.getDashboardStats = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const totalReports = await BugReport.countDocuments({ userId });
+
+    const recentReports = await BugReport.find({ userId })
+      .sort({ createdAt: -1 })
+      .limit(5);
+
+    const languageStats = await BugReport.aggregate([
+      { $match: { userId } },
+      {
+        $group: {
+          _id: "$language",
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { count: -1 } },
+    ]);
+
+    const bugTypeStats = await BugReport.aggregate([
+      { $match: { userId } },
+      {
+        $group: {
+          _id: "$bugType",
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { count: -1 } },
+    ]);
+
+    const topLanguage = languageStats.length > 0 ? languageStats[0]._id : "N/A";
+    const criticalIssue = bugTypeStats.length > 0 ? bugTypeStats[0]._id : "N/A";
+    const lastAnalysis = recentReports.length > 0 ? recentReports[0].createdAt : null;
+
+    res.json({
+      totalReports,
+      topLanguage,
+      criticalIssue,
+      lastAnalysis,
+      languageStats,
+      bugTypeStats,
+      recentReports,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to get dashboard stats",
+      error: error.message,
+    });
+  }
+};
+
+exports.getReportById = async (req, res) => {
+  try {
+    const report = await BugReport.findOne({
+      _id: req.params.id,
+      userId: req.user._id,
+    });
+
+    if (!report) {
+      return res.status(404).json({
+        message: "Report not found",
+      });
+    }
+
+    res.json(report);
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to get report",
+      error: error.message,
+    });
+  }
+};
+
 exports.analyzeCode = async (req, res) => {
   try {
     const { language, code, errorMessage } = req.body;
