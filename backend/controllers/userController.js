@@ -1,12 +1,21 @@
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
+const BugReport = require("../models/BugReport");
 
 exports.getProfile = async (req, res) => {
   try {
-    res.json({
-      id: req.user._id,
-      name: req.user.name,
-      email: req.user.email,
+    const user = await User.findById(req.user._id).select("-password");
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    res.status(200).json({
+      id: user._id,
+      name: user.name,
+      email: user.email,
     });
   } catch (error) {
     res.status(500).json({
@@ -20,6 +29,23 @@ exports.updateProfile = async (req, res) => {
   try {
     const { name, email } = req.body;
 
+    if (!name?.trim() || !email?.trim()) {
+      return res.status(400).json({
+        message: "Name and email are required",
+      });
+    }
+
+    const existingUser = await User.findOne({
+      email: email.trim().toLowerCase(),
+      _id: { $ne: req.user._id },
+    });
+
+    if (existingUser) {
+      return res.status(409).json({
+        message: "Email is already used by another account",
+      });
+    }
+
     const user = await User.findById(req.user._id);
 
     if (!user) {
@@ -28,12 +54,12 @@ exports.updateProfile = async (req, res) => {
       });
     }
 
-    user.name = name || user.name;
-    user.email = email || user.email;
+    user.name = name.trim();
+    user.email = email.trim().toLowerCase();
 
     const updatedUser = await user.save();
 
-    res.json({
+    res.status(200).json({
       message: "Profile updated successfully",
       user: {
         id: updatedUser._id,
@@ -59,6 +85,12 @@ exports.updatePassword = async (req, res) => {
       });
     }
 
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        message: "New password must be at least 6 characters",
+      });
+    }
+
     const user = await User.findById(req.user._id);
 
     if (!user) {
@@ -78,12 +110,37 @@ exports.updatePassword = async (req, res) => {
     user.password = await bcrypt.hash(newPassword, 10);
     await user.save();
 
-    res.json({
+    res.status(200).json({
       message: "Password updated successfully",
     });
   } catch (error) {
     res.status(500).json({
       message: "Failed to update password",
+      error: error.message,
+    });
+  }
+};
+
+exports.deleteAccount = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    await BugReport.deleteMany({ userId });
+
+    const deletedUser = await User.findByIdAndDelete(userId);
+
+    if (!deletedUser) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    res.status(200).json({
+      message: "Account and related reports deleted successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to delete account",
       error: error.message,
     });
   }
