@@ -23,6 +23,26 @@ function Settings() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [updatingPassword, setUpdatingPassword] = useState(false);
 
+  const deleteAccount = async () => {
+  const confirmed = window.confirm(
+    "This will permanently delete your account and all saved reports. Continue?"
+  );
+
+  if (!confirmed) return;
+
+  try {
+    await API.delete("/users/account");
+
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
+    alert("Account deleted successfully");
+    navigate("/register");
+  } catch (error) {
+    alert(error.response?.data?.message || "Failed to delete account");
+  }
+};
+
   const getProfile = async () => {
     try {
       const res = await API.get("/users/profile");
@@ -417,9 +437,9 @@ function Settings() {
             </p>
           </div>
 
-          <button onClick={() => alert("Account delete feature not connected yet")}>
-            Delete My Account
-          </button>
+          <button onClick={deleteAccount}>
+  Delete My Account
+</button>
         </section>
 
         <footer className="settings-footer">
